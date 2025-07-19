@@ -1,8 +1,22 @@
 import { Database } from '@/types/database'
+import { NicePayPaymentRecord, PaymentStatus, PaymentMethod } from './nicepay'
 
 // Core reservation types
 export type Reservation = Database['public']['Tables']['program_participants']['Row']
 export type Payment = Database['public']['Tables']['payments']['Row']
+
+// Enhanced payment type with NicePay support
+export interface EnhancedPayment extends Omit<Payment, 'toss_payment_data' | 'status' | 'payment_method'> {
+  status: PaymentStatus
+  payment_method: PaymentMethod
+  payment_provider: 'nicepay' | 'toss'
+  raw_data: any // NicePay or TossPayments response data
+  approved_at: string | null
+  cancelled_at: string | null
+  cancel_reason: string | null
+  webhook_received_at: string | null
+  webhook_data: any
+}
 
 // Enhanced reservation types
 export interface EnhancedReservation extends Reservation {
@@ -13,11 +27,11 @@ export interface EnhancedReservation extends Reservation {
     location: string
     instructor_name: string
   }
-  payment?: Payment
+  payment?: EnhancedPayment
 }
 
 export type ReservationStatus = 'registered' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'
-export type PaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed'
+// PaymentStatus is now imported from nicepay.ts
 
 // Reservation form data
 export interface ReservationFormData {
@@ -34,7 +48,7 @@ export interface ReservationFormData {
   special_requests?: string
   
   // Payment information
-  payment_method: 'card' | 'transfer' | 'simple'
+  payment_method: PaymentMethod
   installment_months?: number
   coupon_code?: string
   
@@ -44,117 +58,6 @@ export interface ReservationFormData {
   marketing_agreed?: boolean
 }
 
-// Payment integration with TossPayments
-export interface TossPaymentRequest {
-  orderId: string
-  amount: number
-  orderName: string
-  customerEmail: string
-  customerName: string
-  customerMobilePhone?: string
-  successUrl: string
-  failUrl: string
-  validHours?: number
-  cashReceiptType?: 'personal' | 'corporate'
-  easyPay?: string
-  locale?: 'ko_KR' | 'en_US'
-  flowMode?: 'DEFAULT' | 'DIRECT'
-  discountCode?: string
-}
-
-export interface TossPaymentResponse {
-  paymentKey: string
-  orderId: string
-  status: 'READY' | 'IN_PROGRESS' | 'WAITING_FOR_DEPOSIT' | 'DONE' | 'CANCELED' | 'PARTIAL_CANCELED' | 'ABORTED' | 'EXPIRED'
-  totalAmount: number
-  balanceAmount: number
-  suppliedAmount: number
-  vat: number
-  currency: string
-  method: string
-  version: string
-  requestedAt: string
-  approvedAt?: string
-  receipt?: {
-    url: string
-  }
-  checkout?: {
-    url: string
-  }
-  card?: {
-    company: string
-    number: string
-    installmentPlanMonths: number
-    isInterestFree: boolean
-    approveNo: string
-    useCardPoint: boolean
-    cardType: string
-    ownerType: string
-    acquireStatus: string
-    receiptUrl: string
-  }
-  virtualAccount?: {
-    accountType: string
-    accountNumber: string
-    bankCode: string
-    customerName: string
-    dueDate: string
-    refundStatus: string
-    expired: boolean
-    settlementStatus: string
-    refundReceiveAccount?: {
-      bankCode: string
-      accountNumber: string
-      holderName: string
-    }
-  }
-  transfer?: {
-    bankCode: string
-    settlementStatus: string
-  }
-  mobilePhone?: {
-    customerMobilePhone: string
-    settlementStatus: string
-    receiptUrl: string
-  }
-  giftCertificate?: {
-    approveNo: string
-    settlementStatus: string
-  }
-  cashReceipt?: {
-    type: string
-    receiptKey: string
-    issueNumber: string
-    receiptUrl: string
-    amount: number
-    taxFreeAmount: number
-  }
-  discount?: {
-    amount: number
-  }
-  cancels?: Array<{
-    cancelAmount: number
-    cancelReason: string
-    taxFreeAmount: number
-    taxAmount: number
-    refundableAmount: number
-    easyPayDiscountAmount: number
-    canceledAt: string
-    transactionKey: string
-  }>
-  secret?: string
-  type: 'NORMAL' | 'BILLING'
-  easyPay?: {
-    provider: string
-    amount: number
-    discountAmount: number
-  }
-  country: string
-  failure?: {
-    code: string
-    message: string
-  }
-}
 
 // Note: Coupon system removed as coupons table is not defined in the current database schema
 
@@ -195,6 +98,8 @@ export interface RefundRequest {
     account_number: string
     holder_name: string
   }
+  payment_provider: 'nicepay' | 'toss'
+  raw_data?: any // NicePay or TossPayments refund response data
   created_at: string
 }
 

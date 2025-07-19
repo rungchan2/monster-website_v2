@@ -922,3 +922,19 @@ export function onAuthStateChange(callback: (event: string, session: any) => voi
   
   return () => subscription.unsubscribe()
 }
+
+export async function getProfile(userId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
+
+  if (error) {
+    console.error('Error getting profile:', error)
+    return null
+  }
+
+  return data
+}

@@ -15,11 +15,14 @@ import {
   DollarSign,
   TrendingUp,
   MapPin,
-  Clock
+  Clock,
+  EyeOff
 } from "lucide-react";
 import Link from "next/link";
 import { getAdminPrograms } from "@/lib/database/admin";
 import { AdminProgramDetails, AdminProgramFilters } from "@/lib/types/admin";
+import { toggleProgramActive, deleteProgram } from "@/lib/database/programs-server";
+import CreateProgramModal from "./CreateProgramModal";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 60 },
@@ -33,6 +36,8 @@ export default function AdminProgramsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<AdminProgramFilters>({});
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     loadPrograms();
@@ -118,6 +123,45 @@ export default function AdminProgramsPage() {
     return 'text-green-600';
   };
 
+  const handleToggleActive = async (programId: string, isActive: boolean) => {
+    try {
+      setActionLoading(programId);
+      await toggleProgramActive(programId, !isActive);
+      await loadPrograms();
+    } catch (error) {
+      console.error('Error toggling program active:', error);
+      alert('프로그램 활성화 상태 변경에 실패했습니다.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteProgram = async (programId: string, participantCount: number) => {
+    if (participantCount > 0) {
+      alert('이미 참가자가 있어서 삭제할 수 없습니다.');
+      return;
+    }
+
+    if (!confirm('정말로 이 프로그램을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      setActionLoading(programId);
+      await deleteProgram(programId);
+      await loadPrograms();
+    } catch (error) {
+      console.error('Error deleting program:', error);
+      alert('프로그램 삭제에 실패했습니다.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCreateSuccess = () => {
+    loadPrograms();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -138,13 +182,13 @@ export default function AdminProgramsPage() {
           <p className="text-gray-600">총 {programs.length}개의 프로그램이 등록되어 있습니다</p>
         </div>
         <div className="flex gap-3">
-          <Link
-            href="/admin/programs/new"
+          <button
+            onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#56007C] text-white rounded-lg hover:bg-[#56007C]/90 transition-colors"
           >
             <Plus size={16} />
             새 프로그램
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -299,21 +343,28 @@ export default function AdminProgramsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Link
-                    href={`/admin/programs/${program.id}`}
+                    href={`/admin/programs/${program.id}/edit`}
                     className="p-2 text-gray-400 hover:text-[#56007C] transition-colors"
-                    title="상세 보기"
+                    title="상세보기 및 편집"
                   >
                     <Eye size={16} />
                   </Link>
-                  <Link
-                    href={`/admin/programs/${program.id}/edit`}
-                    className="p-2 text-gray-400 hover:text-[#56007C] transition-colors"
-                    title="편집"
-                  >
-                    <Edit size={16} />
-                  </Link>
                   <button
-                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    onClick={() => handleToggleActive(program.id, program.is_active)}
+                    disabled={actionLoading === program.id}
+                    className={`p-2 transition-colors ${
+                      program.is_active 
+                        ? 'text-gray-400 hover:text-orange-600' 
+                        : 'text-orange-400 hover:text-[#56007C]'
+                    }`}
+                    title={program.is_active ? '숨기기' : '표시하기'}
+                  >
+                    {program.is_active ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProgram(program.id, program.enrollment.current)}
+                    disabled={actionLoading === program.id}
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
                     title="삭제"
                   >
                     <Trash2 size={16} />
@@ -392,15 +443,21 @@ export default function AdminProgramsPage() {
           <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">프로그램이 없습니다</h3>
           <p className="text-gray-500 mb-4">첫 번째 프로그램을 만들어보세요.</p>
-          <Link
-            href="/admin/programs/new"
+          <button
+            onClick={() => setShowCreateModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#56007C] text-white rounded-lg hover:bg-[#56007C]/90 transition-colors"
           >
             <Plus size={16} />
             새 프로그램 만들기
-          </Link>
+          </button>
         </div>
       )}
+
+      <CreateProgramModal 
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handleCreateSuccess}
+      />
     </div>
   );
 }

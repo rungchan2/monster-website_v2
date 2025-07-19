@@ -62,6 +62,7 @@ export default function ProgramDetailPage() {
   const [loading, setLoading] = useState(true); 
   const [user, setUser] = useState<any>(null);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [hasRegistered, setHasRegistered] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'overview' | 'curriculum' | 'instructor' | 'reviews'>('overview');
 
   const slug = params?.slug as string;
@@ -72,6 +73,13 @@ export default function ProgramDetailPage() {
       loadUser();
     }
   }, [slug]);
+
+  // 프로그램과 사용자 정보가 모두 로드된 후 등록 확인
+  useEffect(() => {
+    if (user && program) {
+      checkUserRegistration(user.id, program.id);
+    }
+  }, [user, program]);
 
   const loadProgram = async () => {
     try {
@@ -94,8 +102,32 @@ export default function ProgramDetailPage() {
     try {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
+      
+      // checkUserRegistration은 별도 useEffect에서 처리
     } catch (error) {
       console.error('Failed to load user:', error);
+    }
+  };
+
+  const checkUserRegistration = async (userId: string, programId: string) => {
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const { data, error } = await supabase
+        .from('program_participants')
+        .select('id, status, payment_status')
+        .eq('user_id', userId)
+        .eq('program_id', programId)
+        .eq('status', 'confirmed') // 결제 완료된 등록만 확인
+        .eq('payment_status', 'paid')
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        setHasRegistered(true);
+      }
+    } catch (error) {
+      console.error('Failed to check user registration:', error);
     }
   };
 
@@ -334,12 +366,20 @@ export default function ProgramDetailPage() {
 
                 {/* Booking Button */}
                 {program.status === 'open' ? (
-                  <Link
-                    href={user ? `/programs/${program.slug}/book` : '/auth/login'}
-                    className="w-full bg-[#56007C] text-white py-3 px-4 rounded-lg hover:bg-[#56007C]/90 transition-colors font-semibold text-center block"
-                  >
-                    {user ? '지금 신청하기' : '로그인 후 신청하기'}
-                  </Link>
+                  <div className="space-y-2">
+                    {hasRegistered && (
+                      <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded-lg">
+                        <CheckCircle size={16} />
+                        <span>이미 신청한 프로그램입니다</span>
+                      </div>
+                    )}
+                    <Link
+                      href={user ? `/programs/${program.slug}/book` : '/auth/login'}
+                      className="w-full bg-[#56007C] text-white py-3 px-4 rounded-lg hover:bg-[#56007C]/90 transition-colors font-semibold text-center block"
+                    >
+                      {user ? (hasRegistered ? '추가 신청하기' : '지금 신청하기') : '로그인 후 신청하기'}
+                    </Link>
+                  </div>
                 ) : (
                   <button
                     disabled

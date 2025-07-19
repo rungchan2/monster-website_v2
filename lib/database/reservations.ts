@@ -28,7 +28,6 @@ import {
   ReservationAnalytics,
   DiscountCalculation
 } from '@/lib/types/reservations'
-import { generateOrderId, calculatePaymentAmount } from '@/lib/payments/toss'
 
 // ================================
 // SIMPLE RESERVATION FUNCTIONS (Compatibility)
@@ -103,6 +102,9 @@ export async function createReservation(reservationData: SimpleReservationData):
       console.error('Error creating participant:', participantError)
       return { data: null, error: '예약 생성에 실패했습니다.' }
     }
+
+    // Note: Payment record creation moved to post-payment processing
+    // This function is now only used for direct reservations without payment
 
     // Send reservation confirmation notification
     try {
@@ -190,7 +192,7 @@ export async function createProgramReservation(
     }
 
     // 4. Generate order ID for payment
-    const orderId = generateOrderId(userId, reservationData.program_id)
+    const orderId = `order_${Date.now()}_${userId.slice(0, 8)}`
 
     // 5. Create payment record
     const { data: payment, error: paymentError } = await supabase

@@ -144,6 +144,7 @@ export interface AdminProgramDetails {
   category: string
   instructor: string
   status: string
+  is_active: boolean
   enrollment: {
     current: number
     maximum: number

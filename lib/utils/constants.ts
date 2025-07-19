@@ -125,11 +125,6 @@ export const API_ROUTES = {
 
 // 외부 서비스
 export const EXTERNAL_SERVICES = {
-  TOSS_PAYMENTS: {
-    CLIENT_KEY: process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY,
-    SUCCESS_URL: '/payments/success',
-    FAIL_URL: '/payments/fail',
-  },
   NOTION: {
     API_URL: 'https://api.notion.com/v1',
   },

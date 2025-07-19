@@ -293,6 +293,7 @@ export async function getAdminPrograms(filters?: AdminProgramFilters): Promise<A
         category: program.category?.name || 'Uncategorized',
         instructor: program.instructor_name || 'TBD',
         status: program.status || '',
+        is_active: program.is_active || false,
         enrollment: {
           current: program.current_participants || 0,
           maximum: program.max_participants || 0,

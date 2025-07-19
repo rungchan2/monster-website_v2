@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { AdminNavigation } from '@/components/admin/AdminNavigation'
+import { Toaster, toast } from 'sonner'
+import { getProfile } from '@/lib/auth/index'
+
 
 export default function AdminLayout({
   children,
@@ -21,8 +24,9 @@ export default function AdminLayout({
   const checkAuth = async () => {
     try {
       const currentUser = await getCurrentUser()
+      const profile = await getProfile(currentUser?.id ?? '')
       
-      if (!currentUser || !currentUser.user_metadata?.is_admin) {
+      if (!currentUser || !profile?.is_admin) {
         router.push('/')
         return
       }
@@ -30,6 +34,7 @@ export default function AdminLayout({
       setUser(currentUser)
     } catch (error) {
       console.error('Auth check failed:', error)
+      toast.error('인증 확인 중 오류가 발생했습니다.')
       router.push('/')
     } finally {
       setLoading(false)
@@ -61,6 +66,7 @@ export default function AdminLayout({
           </div>
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }
